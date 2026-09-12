@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { X, Wallet, Phone, CheckCircle2, Disc3 } from "lucide-react-native";
 
+import { createOrder } from "@/src/api";
 import { openLink, openWhatsApp, STUDIO } from "@/src/contact";
-import { PrimaryButton } from "@/src/components/ui";
+import { Field, PrimaryButton } from "@/src/components/ui";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
 const METHODS = ["MyNita", "Amanata"];
@@ -16,21 +17,47 @@ export default function Paiement() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { title, price } = useLocalSearchParams<{ title?: string; price?: string }>();
-  const [method, setMethod] = useState("MyNita");
-
+  const params = useLocalSearchParams<{ title?: string; price_mp3?: string; price_wav?: string }>();
+  const title = params.title;
+  const priceMp3 = params.price_mp3 || "";
+  const priceWav = params.price_wav || "";
   const isOrder = !!title;
 
-  const confirm = () => {
+  const licenses = [
+    ...(priceMp3 ? [{ key: "MP3", price: priceMp3 }] : []),
+    ...(priceWav ? [{ key: "WAV", price: priceWav }] : []),
+  ];
+  const [license, setLicense] = useState(licenses[0]?.key ?? "MP3");
+  const [method, setMethod] = useState("MyNita");
+  const [name, setName] = useState("");
+
+  const selectedPrice = licenses.find((l) => l.key === license)?.price ?? priceMp3 || priceWav;
+
+  const confirm = async () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    const message = isOrder
-      ? `Bonjour Big S, je commande l'instrumentale "${title}"${price ? ` (${price})` : ""}.\nPaiement via ${method} au ${STUDIO.phoneDisplay}. Je confirme l'envoi du reçu.`
-      : `Bonjour Big S, j'ai effectué un paiement via ${method} pour valider ma commande/session.`;
-    openWhatsApp(message);
+    if (isOrder) {
+      // Record the order for studio tracking (best-effort, never blocks WhatsApp).
+      try {
+        await createOrder({
+          beat_title: title!,
+          license,
+          price: selectedPrice,
+          method,
+          customer_name: name.trim(),
+        });
+      } catch {
+        // ignore — still send the WhatsApp message
+      }
+      const who = name.trim() ? `Nom: ${name.trim()}. ` : "";
+      const message = `Bonjour Big S, ${who}je commande l'instrumentale "${title}" — licence ${license} (${selectedPrice}).\nPaiement via ${method} au ${STUDIO.phoneDisplay}. Je confirme l'envoi du reçu.`;
+      openWhatsApp(message);
+    } else {
+      openWhatsApp(`Bonjour Big S, j'ai effectué un paiement via ${method} pour valider ma commande/session.`);
+    }
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.iconWrap}>
           <Wallet color={colors.brandPrimary} size={22} />
@@ -43,6 +70,7 @@ export default function Paiement() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
       >
         {isOrder ? (
@@ -56,11 +84,34 @@ export default function Paiement() {
                 {title}
               </Text>
             </View>
-            {price ? <Text style={styles.orderPrice}>{price}</Text> : null}
+            <Text style={styles.orderPrice}>{selectedPrice}</Text>
           </View>
         ) : (
           <Text style={styles.lead}>Réglez votre acompte ou vos prestations en toute simplicité.</Text>
         )}
+
+        {isOrder && licenses.length > 0 ? (
+          <View style={{ gap: 10 }}>
+            <Text style={styles.fieldLabel}>Choisissez la licence</Text>
+            <View style={styles.licenses}>
+              {licenses.map((l) => {
+                const active = license === l.key;
+                return (
+                  <Pressable
+                    key={l.key}
+                    testID={`license-${l.key}`}
+                    onPress={() => setLicense(l.key)}
+                    style={[styles.licenseCard, active && styles.licenseActive]}
+                  >
+                    <Text style={[styles.licenseName, active && styles.licenseNameActive]}>Licence {l.key}</Text>
+                    <Text style={[styles.licensePrice, active && styles.licenseNameActive]}>{l.price}</Text>
+                    <Text style={styles.licenseHint}>{l.key === "MP3" ? "Fichier compressé" : "Qualité studio"}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
 
         {/* Reception number */}
         <View style={styles.numberCard}>
@@ -80,7 +131,10 @@ export default function Paiement() {
           {"Envoyez votre paiement mobile au numéro ci-dessus via MyNita ou Amanata, puis confirmez l'envoi du reçu sur WhatsApp."}
         </Text>
 
-        {/* Method selection */}
+        {isOrder ? (
+          <Field label="Votre nom (facultatif)" testID="order-name-input" value={name} onChangeText={setName} placeholder="Pour identifier votre commande" />
+        ) : null}
+
         <Text style={styles.fieldLabel}>Méthode de paiement mobile</Text>
         <View style={styles.methods}>
           {METHODS.map((m) => {
@@ -106,7 +160,7 @@ export default function Paiement() {
           style={{ marginTop: 8 }}
         />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -164,6 +218,21 @@ const useStyles = makeStyles((colors) => ({
   orderLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
   orderTitle: { color: colors.onSurface, fontFamily: fonts.semiBold, fontSize: 16, marginTop: 2 },
   orderPrice: { color: colors.brandPrimary, fontFamily: fonts.displaySemiBold, fontSize: 18 },
+  licenses: { flexDirection: "row", gap: 12 },
+  licenseCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 3,
+  },
+  licenseActive: { borderColor: colors.brandPrimary, backgroundColor: colors.surfaceTertiary },
+  licenseName: { color: colors.onSurfaceSecondary, fontFamily: fonts.semiBold, fontSize: 14 },
+  licenseNameActive: { color: colors.onSurface },
+  licensePrice: { color: colors.brandPrimary, fontFamily: fonts.displaySemiBold, fontSize: 18 },
+  licenseHint: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11 },
   numberCard: {
     backgroundColor: colors.surfaceSecondary,
     borderRadius: 18,

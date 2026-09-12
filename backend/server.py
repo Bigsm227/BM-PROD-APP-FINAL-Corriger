@@ -156,13 +156,29 @@ class BeatCreate(BaseModel):
     title: str
     genre: str
     tempo: str
-    price: Optional[str] = ""
+    price_mp3: Optional[str] = ""
+    price_wav: Optional[str] = ""
+    price: Optional[str] = ""  # legacy single price
     preview_url: Optional[str] = ""
     published: bool = True
 
 
 class Beat(BeatCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: str = Field(default_factory=now_iso)
+
+
+class OrderCreate(BaseModel):
+    beat_title: str
+    license: str  # "MP3" | "WAV"
+    price: str
+    method: str  # "MyNita" | "Amanata"
+    customer_name: Optional[str] = ""
+
+
+class Order(OrderCreate):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    status: str = "nouveau"  # nouveau | en_cours | traite
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -242,9 +258,9 @@ SERVICES = [
 ]
 
 SEED_BEATS = [
-    {"title": "Afro Zouk Love Vol. 1", "genre": "Afro Zouk", "tempo": "95 BPM", "price": "15 000 FCFA"},
-    {"title": "Kalangu Lema vibe", "genre": "Afrobeat / Traditionnel", "tempo": "105 BPM", "price": "20 000 FCFA"},
-    {"title": "Niamey Trap Melodic", "genre": "Hausa Hip Hop / Trap", "tempo": "140 BPM", "price": "25 000 FCFA"},
+    {"title": "Afro Zouk Love Vol. 1", "genre": "Afro Zouk", "tempo": "95 BPM", "price_mp3": "15 000 FCFA", "price_wav": "25 000 FCFA"},
+    {"title": "Kalangu Lema vibe", "genre": "Afrobeat / Traditionnel", "tempo": "105 BPM", "price_mp3": "20 000 FCFA", "price_wav": "30 000 FCFA"},
+    {"title": "Niamey Trap Melodic", "genre": "Hausa Hip Hop / Trap", "tempo": "140 BPM", "price_mp3": "25 000 FCFA", "price_wav": "40 000 FCFA"},
 ]
 
 SEED_PROJECTS = [
@@ -355,6 +371,13 @@ async def create_appointment(payload: AppointmentCreate):
     return appt
 
 
+@api_router.post("/orders", response_model=Order)
+async def create_order(payload: OrderCreate):
+    order = Order(**payload.dict())
+    await db.orders.insert_one(order.dict())
+    return order
+
+
 # ---------------------------------------------------------------------------
 # Auth routes
 # ---------------------------------------------------------------------------
@@ -461,6 +484,22 @@ async def delete_project(project_id: str, admin: dict = Depends(get_current_admi
 async def admin_beats(admin: dict = Depends(get_current_admin)):
     docs = await db.beats.find({"deleted_at": {"$exists": False}}).sort("created_at", 1).to_list(500)
     return [Beat(**{k: v for k, v in d.items() if k != "_id"}) for d in docs]
+
+
+@api_router.get("/admin/orders", response_model=List[Order])
+async def admin_orders(admin: dict = Depends(get_current_admin)):
+    docs = await db.orders.find().sort("created_at", -1).to_list(500)
+    return [Order(**{k: v for k, v in d.items() if k != "_id"}) for d in docs]
+
+
+@api_router.patch("/admin/orders/{order_id}", response_model=Order)
+async def update_order(order_id: str, payload: StatusUpdate, admin: dict = Depends(get_current_admin)):
+    res = await db.orders.find_one_and_update(
+        {"id": order_id}, {"$set": {"status": payload.status}}, return_document=True
+    )
+    if not res:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    return Order(**{k: v for k, v in res.items() if k != "_id"})
 
 
 @api_router.post("/admin/beats", response_model=Beat)

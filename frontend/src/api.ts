@@ -26,8 +26,21 @@ export type Beat = {
   genre: string;
   tempo: string;
   price?: string;
+  price_mp3?: string;
+  price_wav?: string;
   preview_url?: string;
   published: boolean;
+  created_at: string;
+};
+
+export type Order = {
+  id: string;
+  beat_title: string;
+  license: string;
+  price: string;
+  method: string;
+  customer_name?: string;
+  status: string;
   created_at: string;
 };
 
@@ -133,6 +146,22 @@ export async function createAppointment(payload: {
   );
 }
 
+export async function createOrder(payload: {
+  beat_title: string;
+  license: string;
+  price: string;
+  method: string;
+  customer_name?: string;
+}): Promise<Order> {
+  return handle(
+    await fetch(`${API}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+}
+
 // ---- Auth ----
 export async function apiLogin(email: string, password: string): Promise<{ access_token: string; email: string }> {
   return handle(
@@ -212,7 +241,15 @@ export async function getAdminBeats(token: string): Promise<Beat[]> {
 
 export async function createBeat(
   token: string,
-  payload: { title: string; genre: string; tempo: string; price?: string; preview_url?: string; published?: boolean },
+  payload: {
+    title: string;
+    genre: string;
+    tempo: string;
+    price_mp3?: string;
+    price_wav?: string;
+    preview_url?: string;
+    published?: boolean;
+  },
 ): Promise<Beat> {
   return handle(
     await fetch(`${API}/admin/beats`, {
@@ -225,6 +262,20 @@ export async function createBeat(
 
 export async function deleteBeat(token: string, id: string) {
   return handle(await fetch(`${API}/admin/beats/${id}`, { method: "DELETE", headers: authHeaders(token) }));
+}
+
+export async function getAdminOrders(token: string): Promise<Order[]> {
+  return handle(await fetch(`${API}/admin/orders`, { headers: authHeaders(token) }));
+}
+
+export async function updateOrderStatus(token: string, id: string, status: string): Promise<Order> {
+  return handle(
+    await fetch(`${API}/admin/orders/${id}`, {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ status }),
+    }),
+  );
 }
 
 // Upload a file to object storage via the backend. Returns the stored path.

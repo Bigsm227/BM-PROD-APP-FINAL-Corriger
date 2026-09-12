@@ -11,6 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { ToastProvider } from "@/src/components/toast";
 import { AuthProvider } from "@/src/auth";
+import { AudioProvider } from "@/src/audio";
 import { queryClient } from "@/src/query-client";
 
 LogBox.ignoreAllLogs(true);
@@ -40,19 +41,21 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <ToastProvider>
-                <StatusBar style="light" />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: "#050505" },
-                  }}
-                >
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="project/[id]" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="paiement" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="admin/login" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="admin/index" />
-                </Stack>
+                <AudioProvider>
+                  <StatusBar style="light" />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: "#050505" },
+                    }}
+                  >
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="project/[id]" options={{ presentation: "modal" }} />
+                    <Stack.Screen name="paiement" options={{ presentation: "modal" }} />
+                    <Stack.Screen name="admin/login" options={{ presentation: "modal" }} />
+                    <Stack.Screen name="admin/index" />
+                  </Stack>
+                </AudioProvider>
               </ToastProvider>
             </AuthProvider>
           </QueryClientProvider>
