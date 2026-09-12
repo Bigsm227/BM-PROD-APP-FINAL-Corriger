@@ -40,11 +40,20 @@ Crée une application mobile moderne pour Big S Media Production avec une belle 
 - WhatsApp: wa.me/22796558193 · Tél: +227 96 55 81 93 · Email: sanistomoussa@gmail.com
 - Socials: TikTok @big.sm.officiel227, YouTube @big_sm_officiel, Facebook/Instagram BM Prod
 
+## Feature batch (2026-06) — Mini-player, Licences, Suivi commandes
+- [x] **Mini-lecteur persistant** : barre de lecture flottante (expo-audio, un seul player global) qui reste visible et continue la lecture en changeant d'onglet ; play/pause + fermer.
+- [x] **Deux licences** : chaque beat a un prix MP3 et un prix WAV ; sélection de la licence à l'écran de paiement (le total se met à jour).
+- [x] **Suivi des commandes** : chaque commande de beat est enregistrée en base (POST /api/orders) puis envoyée sur WhatsApp ; onglet **Commandes** dans l'admin avec statut Nouveau → En cours → Traité.
+- [x] Formulaire admin beat : deux champs prix (MP3/WAV) + import extrait audio.
+- [x] Vérifié : tests backend + 100% parcours frontend (iteration_4).
+
+## Passerelle Auto (en attente)
+- Le paiement 100% automatique en ligne nécessite un compte marchand + une API MyNita/Amanata. Dès réception des identifiants marchands, brancher une passerelle (endpoint /api/payments) et confirmer automatiquement les commandes. Actuellement : mobile money vers le numéro studio + reçu WhatsApp + commande enregistrée en base.
+
 ## Backlog / Remaining
-- P1: Lecteur audio global mini-player (persistant en bas) pour continuer l'écoute en naviguant.
-- P2: Deux prix par beat (licence MP3 / WAV) si souhaité plus tard.
-- P2: Passerelle de paiement automatique (nécessite un compte marchand MyNita/Amanata + API).
-- P2: Historique des commandes côté studio.
+- P1: Barre de progression / temps dans le mini-lecteur.
+- P2: Passerelle de paiement automatique (dès obtention du compte marchand + API).
+- P2: Export / notifications des nouvelles commandes.
 
 ## Feature batch (2026-06) — Audio, Prix, Prépaiement, Uploads
 - [x] **Extraits audio** : lecteur play/pause par beat (expo-audio), lecture d'un seul extrait à la fois, remise à zéro en fin de piste.

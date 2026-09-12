@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 4 — persistent mini audio player + two-license beats + local pre-payment + order tracking. Backend: 8/8 new pytest tests PASS in /app/backend/tests/test_orders_and_licenses.py (public /api/beats exposes price_mp3+price_wav for all 3 seeded beats; 'Afro Zouk Love Vol. 1' has non-empty preview_url; POST /api/orders (public, no auth) creates order with status='nouveau' and 200; GET /api/admin/orders returns 401 without token and lists created orders with token; PATCH /api/admin/orders/{id} cycles nouveau→en_cours→traite and returns 404 for unknown id; POST /api/admin/beats accepts + persists price_mp3+price_wav and both fields reappear in public /api/beats). Frontend (390x844 mobile viewport): Beats tab shows 3 cards each with 'MP3 <price>' + 'WAV <price>' pill tags (verified 3 MP3, 3 WAV) — Afro Zouk has an enabled Play button while the 2 others show a disabled disc + 'Extrait bientôt disponible' text; tapping Play on Afro Zouk mounts a mini player bar (testID mini-player) that persists when navigating to Portfolio, Studio and Accueil tabs, its toggle button flips play/pause, and the X button hides it. Order flow: 'Commander' opens /paiement with order summary card (title + price) + Licence MP3 / Licence WAV selector — default MP3 shows '15 000 FCFA', tapping Licence WAV updates the summary to '25 000 FCFA' live. Optional 'Votre nom' field + MyNita/Amanata selector present. Confirming with name='TEST_Reviewer', license=WAV, method=Amanata: window.open captured wa.me/22796558193?text=... containing url-encoded 'Afro Zouk Love Vol. 1', 'licence WAV (25 000 FCFA)', 'via Amanata', and studio number +227 96 55 81 93; concurrently POST /api/orders recorded the order (admin list grew from 2→3 and the new row exposes beat_title='Afro Zouk Love Vol. 1', license='WAV', price='25 000 FCFA', method='Amanata', status='nouveau'). Admin dashboard after login (admin@bigsmedia.com / BigS2026!Admin) shows 3 tabs (Commandes, Réalisations, Instrumentales); Commandes lists all orders with a status pill (testID order-status-<id>) that cycles Nouveau → En cours → Traité → Nouveau on successive taps (verified 3 taps); Instrumentales 'Nouvelle instrumentale' form exposes 'Prix licence MP3' (beat-price-mp3-input), 'Prix licence WAV' (beat-price-wav-input) and 'Importer un extrait (mp3)' (beat-pick-audio). No red screens; only pre-existing non-blocking deprecation warnings (shadow*, pointerEvents, useNativeDriver on web). Success: backend 100%, frontend 100%.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "global", "issues": ["Console warnings: 'shadow*' style props deprecated (React Native Web) and 'props.pointerEvents is deprecated' — cosmetic, migrate to 'boxShadow' and 'style.pointerEvents' when convenient."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_orders_and_licenses.py",
+    "/app/backend/tests/test_bigsmedia_api.py",
+    "/app/backend/tests/test_beats.py",
+    "/app/backend/tests/test_uploads_and_prices.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "audio.tsx: uses a single expo-audio player instance created with useAudioPlayer(null) at the AudioProvider (mounted at root) and player.replace({uri}) on new beat — correct pattern for a persistent player. didJustFinish handler resets to 0 and pauses so the mini player stays visible after track end.",
+    "mini-player.tsx: computed bottom = (web?64:49) + insets.bottom + 8 so the bar floats just above the tab bar on web and native; testIDs present for the bar, toggle, close.",
+    "(tabs)/_layout.tsx: MiniPlayer is a sibling of <Tabs/> under a shared <View flex:1>, which correctly makes it persist across tab changes.",
+    "paiement.tsx: license selector price is derived from licenses.find(...)?.price with sane fallback; POST /api/orders is wrapped in try/catch so a backend failure never blocks the WhatsApp handoff (as specified); message string is url-encoded through openWhatsApp.",
+    "server.py: OrderCreate/Order models look correct; /api/orders is public (as requested), /api/admin/orders + PATCH are gated by get_current_admin, and mongo _id is excluded from responses.",
+    "admin/index.tsx: order status pill cycles via a next-status map and triggers updateOrderStatus + query invalidation — verified live cycling through 3 states."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_orders_and_licenses.py",
+    "/app/test_reports/iteration_4.json",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "One order created via the payment UI (beat_title='Afro Zouk Love Vol. 1', license=WAV, method=Amanata, customer_name='TEST_Reviewer'). Pytest test class also created + deleted a TEST_TwoPrice beat via admin API. No cleanup required for the UI-created order (harmless test data, prefixed customer_name='TEST_Reviewer').",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend URL from /app/frontend/.env EXPO_PUBLIC_BACKEND_URL. Admin creds admin@bigsmedia.com / BigS2026!Admin. Studio wa.me number 22796558193 / display +227 96 55 81 93. To test WhatsApp on web preview, override window.open via page.add_init_script before goto and read window.__opened afterwards. Audio playback works on web because Afro Zouk preview_url points to a public SoundHelix mp3; if autoplay is blocked, verifying the mini-player bar renders and persists across tabs is sufficient. Order status pill cycle order: nouveau → en_cours → traite → nouveau. Admin login form uses testIDs login-email-input/login-password-input/login-submit-button (NOT admin-*). Beats-form testIDs: beat-price-mp3-input, beat-price-wav-input, beat-pick-audio.",
+  "rca_of_issue": "No blocking issues. All 8 requested feature checks pass end-to-end (backend + frontend)."
+}

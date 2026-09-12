@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
-import { LogOut, Trash2, Film, Music4, Disc3, Upload, Music, Check } from "lucide-react-native";
+import { LogOut, Trash2, Film, Music4, Disc3, Upload, Music, Check, ShoppingBag } from "lucide-react-native";
 
 import {
   createBeat,
@@ -14,10 +14,13 @@ import {
   deleteBeat,
   deleteProject,
   getAdminBeats,
+  getAdminOrders,
   getAdminProjects,
   mediaUrl,
+  updateOrderStatus,
   uploadFile,
   type Beat,
+  type Order,
   type Project,
 } from "@/src/api";
 import { useAuth } from "@/src/auth";
@@ -26,9 +29,13 @@ import { useToast } from "@/src/components/toast";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
 const TABS = [
+  { key: "orders", label: "Commandes", icon: ShoppingBag },
   { key: "projects", label: "Réalisations", icon: Film },
   { key: "beats", label: "Instrumentales", icon: Music4 },
 ] as const;
+
+const ORDER_FLOW: Record<string, string> = { nouveau: "en_cours", en_cours: "traite", traite: "nouveau" };
+const ORDER_LABEL: Record<string, string> = { nouveau: "Nouveau", en_cours: "En cours", traite: "Traité" };
 
 export default function AdminDashboard() {
   const styles = useStyles();
@@ -38,12 +45,13 @@ export default function AdminDashboard() {
   const toast = useToast();
   const qc = useQueryClient();
   const { token, ready, logout } = useAuth();
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("projects");
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("orders");
 
   useEffect(() => {
     if (ready && !token) router.replace("/admin/login");
   }, [ready, token, router]);
 
+  const orders = useQuery({ queryKey: ["admin-orders"], queryFn: () => getAdminOrders(token!), enabled: !!token });
   const projects = useQuery({
     queryKey: ["admin-projects"],
     queryFn: () => getAdminProjects(token!),
@@ -52,11 +60,18 @@ export default function AdminDashboard() {
   const beats = useQuery({ queryKey: ["admin-beats"], queryFn: () => getAdminBeats(token!), enabled: !!token });
 
   const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-orders"] });
     qc.invalidateQueries({ queryKey: ["admin-projects"] });
     qc.invalidateQueries({ queryKey: ["admin-beats"] });
     qc.invalidateQueries({ queryKey: ["portfolio"] });
     qc.invalidateQueries({ queryKey: ["beats"] });
   };
+
+  const orderMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => updateOrderStatus(token!, id, status),
+    onSuccess: invalidate,
+    onError: (e: Error) => toast(e.message, "error"),
+  });
 
   const delProject = useMutation({
     mutationFn: (id: string) => deleteProject(token!, id),
@@ -97,12 +112,16 @@ export default function AdminDashboard() {
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{projects.data?.length ?? 0}</Text>
-            <Text style={styles.statLabel}>Réalisations</Text>
+            <Text style={styles.statValue}>{orders.data?.filter((o) => o.status === "nouveau").length ?? 0}</Text>
+            <Text style={styles.statLabel}>Nouvelles cmd.</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{beats.data?.length ?? 0}</Text>
             <Text style={styles.statLabel}>Instrumentales</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{projects.data?.length ?? 0}</Text>
+            <Text style={styles.statLabel}>Réalisations</Text>
           </View>
         </View>
 
@@ -125,7 +144,13 @@ export default function AdminDashboard() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
       >
-        {tab === "projects" ? (
+        {tab === "orders" ? (
+          <OrdersManager
+            orders={orders.data ?? []}
+            loading={orders.isLoading}
+            onCycle={(id, status) => orderMut.mutate({ id, status: ORDER_FLOW[status] ?? "nouveau" })}
+          />
+        ) : tab === "projects" ? (
           <ProjectsManager
             projects={projects.data ?? []}
             loading={projects.isLoading}
@@ -143,6 +168,57 @@ export default function AdminDashboard() {
           />
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function OrdersManager({
+  orders,
+  loading,
+  onCycle,
+}: {
+  orders: Order[];
+  loading: boolean;
+  onCycle: (id: string, status: string) => void;
+}) {
+  const styles = useStyles();
+  const { colors } = useTheme();
+
+  if (loading) return <Loader />;
+  if (orders.length === 0) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>{"Aucune commande reçue pour l'instant."}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 12 }}>
+      {orders.map((o) => {
+        const bg = o.status === "traite" ? colors.success : o.status === "en_cours" ? colors.info : colors.warning;
+        const fg = o.status === "traite" ? colors.onSuccess : o.status === "en_cours" ? colors.onInfo : colors.onWarning;
+        return (
+          <View key={o.id} style={styles.orderRow} testID={`admin-order-${o.id}`}>
+            <View style={styles.orderHead}>
+              <Text style={styles.orderTitleTxt} numberOfLines={1}>
+                {o.beat_title}
+              </Text>
+              <Pressable
+                testID={`order-status-${o.id}`}
+                onPress={() => onCycle(o.id, o.status)}
+                style={[styles.pill, { backgroundColor: bg }]}
+              >
+                <Text style={[styles.pillText, { color: fg }]}>{ORDER_LABEL[o.status] ?? o.status}</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.rowMeta}>
+              Licence {o.license} · {o.price} · {o.method}
+            </Text>
+            {o.customer_name ? <Text style={styles.orderClient}>Client : {o.customer_name}</Text> : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -327,7 +403,8 @@ function BeatsManager({
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [tempo, setTempo] = useState("");
-  const [price, setPrice] = useState("");
+  const [priceMp3, setPriceMp3] = useState("");
+  const [priceWav, setPriceWav] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
@@ -352,13 +429,23 @@ function BeatsManager({
   };
 
   const createMut = useMutation({
-    mutationFn: () => createBeat(token, { title, genre, tempo, price, preview_url: previewUrl, published: true }),
+    mutationFn: () =>
+      createBeat(token, {
+        title,
+        genre,
+        tempo,
+        price_mp3: priceMp3,
+        price_wav: priceWav,
+        preview_url: previewUrl,
+        published: true,
+      }),
     onSuccess: () => {
       toast("Instrumentale ajoutée", "success");
       setTitle("");
       setGenre("");
       setTempo("");
-      setPrice("");
+      setPriceMp3("");
+      setPriceWav("");
       setPreviewUrl("");
       setOpen(false);
       onCreated();
@@ -378,7 +465,8 @@ function BeatsManager({
           <Field label="Titre" testID="beat-title-input" value={title} onChangeText={setTitle} placeholder="Ex. Afro Zouk Love Vol. 1" />
           <Field label="Genre" testID="beat-genre-input" value={genre} onChangeText={setGenre} placeholder="Ex. Afro Zouk" />
           <Field label="Tempo" testID="beat-tempo-input" value={tempo} onChangeText={setTempo} placeholder="Ex. 95 BPM" />
-          <Field label="Prix" testID="beat-price-input" value={price} onChangeText={setPrice} placeholder="Ex. 15 000 FCFA" />
+          <Field label="Prix licence MP3" testID="beat-price-mp3-input" value={priceMp3} onChangeText={setPriceMp3} placeholder="Ex. 15 000 FCFA" />
+          <Field label="Prix licence WAV" testID="beat-price-wav-input" value={priceWav} onChangeText={setPriceWav} placeholder="Ex. 25 000 FCFA" />
           <View style={{ gap: 8 }}>
             <Text style={styles.uploadLabel}>Extrait audio</Text>
             <Pressable
@@ -430,7 +518,8 @@ function BeatsManager({
               </Text>
               <Text style={styles.rowMeta}>
                 {b.genre} · {b.tempo}
-                {b.price ? ` · ${b.price}` : ""}
+                {b.price_mp3 ? ` · MP3 ${b.price_mp3}` : ""}
+                {b.price_wav ? ` · WAV ${b.price_wav}` : ""}
                 {b.preview_url ? " · Extrait" : ""}
               </Text>
             </View>
@@ -540,6 +629,19 @@ const useStyles = makeStyles((colors) => ({
   rowInfo: { flex: 1, gap: 2 },
   rowTitle: { color: colors.onSurface, fontFamily: fonts.semiBold, fontSize: 15 },
   rowMeta: { color: colors.brandPrimary, fontFamily: fonts.medium, fontSize: 12 },
+  orderRow: {
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 6,
+  },
+  orderHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  orderTitleTxt: { color: colors.onSurface, fontFamily: fonts.semiBold, fontSize: 16, flex: 1 },
+  orderClient: { color: colors.onSurfaceTertiary, fontFamily: fonts.regular, fontSize: 13 },
+  pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  pillText: { fontFamily: fonts.semiBold, fontSize: 12 },
   delBtn: {
     width: 40,
     height: 40,
