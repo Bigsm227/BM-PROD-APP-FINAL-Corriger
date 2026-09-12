@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { X, Calendar } from "lucide-react-native";
 
-import { getProject } from "@/src/api";
+import { getProject, mediaUrl } from "@/src/api";
 import { Loader } from "@/src/components/ui";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
@@ -43,7 +43,7 @@ export default function ProjectDetail() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
           <View style={styles.hero}>
-            <Image source={{ uri: project.image_url }} style={styles.heroImg} contentFit="cover" transition={300} />
+            <Image source={{ uri: mediaUrl(project.image_url) }} style={styles.heroImg} contentFit="cover" transition={300} />
             <LinearGradient
               colors={["rgba(5,5,5,0.2)", "rgba(5,5,5,0)", "rgba(5,5,5,0.95)"]}
               locations={[0, 0.5, 1]}

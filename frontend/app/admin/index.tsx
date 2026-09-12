@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { LogOut, Trash2, Film, Music4, Disc3 } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { LogOut, Trash2, Film, Music4, Disc3, Upload, Music, Check } from "lucide-react-native";
 
 import {
   createBeat,
@@ -13,6 +15,8 @@ import {
   deleteProject,
   getAdminBeats,
   getAdminProjects,
+  mediaUrl,
+  uploadFile,
   type Beat,
   type Project,
 } from "@/src/api";
@@ -165,6 +169,37 @@ function ProjectsManager({
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [year, setYear] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const pickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      if (!perm.canAskAgain) {
+        toast("Autorisez l'accès aux photos dans les réglages.", "error");
+        Linking.openSettings().catch(() => {});
+      } else {
+        toast("Accès aux photos refusé.", "error");
+      }
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 });
+    if (res.canceled || !res.assets?.length) return;
+    const asset = res.assets[0];
+    setUploading(true);
+    try {
+      const up = await uploadFile(token, {
+        uri: asset.uri,
+        name: asset.fileName ?? `image-${Date.now()}.jpg`,
+        type: asset.mimeType ?? "image/jpeg",
+      });
+      setImageUrl(up.path);
+      toast("Image importée", "success");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const createMut = useMutation({
     mutationFn: () => createProject(token, { title, category, description, image_url: imageUrl, year, published: true }),
@@ -193,8 +228,27 @@ function ProjectsManager({
           <Field label="Titre" testID="project-title-input" value={title} onChangeText={setTitle} placeholder="Titre du projet" />
           <Field label="Catégorie" testID="project-category-input" value={category} onChangeText={setCategory} placeholder="Clip, Publicité..." />
           <Field label="Année" testID="project-year-input" value={year} onChangeText={setYear} placeholder="2025" />
+          <View style={{ gap: 8 }}>
+            <Text style={styles.uploadLabel}>Image de la réalisation</Text>
+            {imageUrl ? (
+              <Image source={{ uri: mediaUrl(imageUrl) }} style={styles.previewImg} contentFit="cover" />
+            ) : null}
+            <Pressable
+              testID="project-pick-image"
+              onPress={pickImage}
+              disabled={uploading}
+              style={({ pressed }) => [styles.uploadBtn, pressed && { opacity: 0.85 }]}
+            >
+              {uploading ? (
+                <ActivityIndicator color={colors.brandPrimary} />
+              ) : (
+                <Upload color={colors.brandPrimary} size={18} />
+              )}
+              <Text style={styles.uploadText}>{imageUrl ? "Changer l'image" : "Importer une image"}</Text>
+            </Pressable>
+          </View>
           <Field
-            label="URL de l'image"
+            label="ou coller une URL d'image"
             testID="project-image-input"
             value={imageUrl}
             onChangeText={setImageUrl}
@@ -233,7 +287,7 @@ function ProjectsManager({
       ) : (
         projects.map((p) => (
           <View key={p.id} style={styles.row} testID={`admin-project-${p.id}`}>
-            <Image source={{ uri: p.image_url }} style={styles.thumb} contentFit="cover" />
+            <Image source={{ uri: mediaUrl(p.image_url) }} style={styles.thumb} contentFit="cover" />
             <View style={styles.rowInfo}>
               <Text style={styles.rowTitle} numberOfLines={1}>
                 {p.title}
@@ -273,14 +327,39 @@ function BeatsManager({
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [tempo, setTempo] = useState("");
+  const [price, setPrice] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  const pickAudio = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ type: "audio/*", copyToCacheDirectory: true });
+    if (res.canceled || !res.assets?.length) return;
+    const asset = res.assets[0];
+    setUploading(true);
+    try {
+      const up = await uploadFile(token, {
+        uri: asset.uri,
+        name: asset.name ?? `extrait-${Date.now()}.mp3`,
+        type: asset.mimeType ?? "audio/mpeg",
+      });
+      setPreviewUrl(up.path);
+      toast("Extrait audio importé", "success");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const createMut = useMutation({
-    mutationFn: () => createBeat(token, { title, genre, tempo, published: true }),
+    mutationFn: () => createBeat(token, { title, genre, tempo, price, preview_url: previewUrl, published: true }),
     onSuccess: () => {
       toast("Instrumentale ajoutée", "success");
       setTitle("");
       setGenre("");
       setTempo("");
+      setPrice("");
+      setPreviewUrl("");
       setOpen(false);
       onCreated();
     },
@@ -299,6 +378,27 @@ function BeatsManager({
           <Field label="Titre" testID="beat-title-input" value={title} onChangeText={setTitle} placeholder="Ex. Afro Zouk Love Vol. 1" />
           <Field label="Genre" testID="beat-genre-input" value={genre} onChangeText={setGenre} placeholder="Ex. Afro Zouk" />
           <Field label="Tempo" testID="beat-tempo-input" value={tempo} onChangeText={setTempo} placeholder="Ex. 95 BPM" />
+          <Field label="Prix" testID="beat-price-input" value={price} onChangeText={setPrice} placeholder="Ex. 15 000 FCFA" />
+          <View style={{ gap: 8 }}>
+            <Text style={styles.uploadLabel}>Extrait audio</Text>
+            <Pressable
+              testID="beat-pick-audio"
+              onPress={pickAudio}
+              disabled={uploading}
+              style={({ pressed }) => [styles.uploadBtn, pressed && { opacity: 0.85 }]}
+            >
+              {uploading ? (
+                <ActivityIndicator color={colors.brandPrimary} />
+              ) : previewUrl ? (
+                <Check color={colors.brandPrimary} size={18} />
+              ) : (
+                <Music color={colors.brandPrimary} size={18} />
+              )}
+              <Text style={styles.uploadText}>
+                {previewUrl ? "Extrait importé — remplacer" : "Importer un extrait (mp3)"}
+              </Text>
+            </Pressable>
+          </View>
           <View style={{ gap: 10 }}>
             <PrimaryButton
               testID="beat-create-button"
@@ -330,6 +430,8 @@ function BeatsManager({
               </Text>
               <Text style={styles.rowMeta}>
                 {b.genre} · {b.tempo}
+                {b.price ? ` · ${b.price}` : ""}
+                {b.preview_url ? " · Extrait" : ""}
               </Text>
             </View>
             <Pressable testID={`delete-beat-${b.id}`} onPress={() => onDelete(b.id)} hitSlop={10} style={styles.delBtn}>
@@ -401,6 +503,21 @@ const useStyles = makeStyles((colors) => ({
     marginBottom: 16,
   },
   formTitle: { color: colors.onSurface, fontFamily: fonts.displaySemiBold, fontSize: 22 },
+  uploadLabel: { color: colors.onSurfaceTertiary, fontFamily: fonts.medium, fontSize: 13, letterSpacing: 0.3 },
+  uploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.brandSecondary,
+    backgroundColor: colors.surfaceTertiary,
+  },
+  uploadText: { color: colors.brandPrimary, fontFamily: fonts.semiBold, fontSize: 14 },
+  previewImg: { width: "100%", height: 150, borderRadius: 12, backgroundColor: colors.surfaceTertiary },
   row: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,5 +1,7 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -11,6 +13,7 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
+import requests
 from passlib.context import CryptContext
 
 
@@ -36,6 +39,49 @@ ADMIN_PASSWORD = os.environ['ADMIN_PASSWORD']
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer(auto_error=False)
+
+# ---------------------------------------------------------------------------
+# Emergent Object Storage
+# ---------------------------------------------------------------------------
+STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
+STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "bigsmedia"
+storage_key = None
+
+
+def init_storage():
+    global storage_key
+    if storage_key:
+        return storage_key
+    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+    resp.raise_for_status()
+    storage_key = resp.json()["storage_key"]
+    return storage_key
+
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    resp = requests.put(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key, "Content-Type": content_type},
+        data=data,
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_object(path: str) -> tuple[bytes, str]:
+    global storage_key
+    key = init_storage()
+    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    if resp.status_code == 503:
+        storage_key = None
+        key = init_storage()
+        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 app = FastAPI(title="Big S Media Production API")
 api_router = APIRouter(prefix="/api")
@@ -110,6 +156,8 @@ class BeatCreate(BaseModel):
     title: str
     genre: str
     tempo: str
+    price: Optional[str] = ""
+    preview_url: Optional[str] = ""
     published: bool = True
 
 
@@ -194,9 +242,9 @@ SERVICES = [
 ]
 
 SEED_BEATS = [
-    {"title": "Afro Zouk Love Vol. 1", "genre": "Afro Zouk", "tempo": "95 BPM"},
-    {"title": "Kalangu Lema vibe", "genre": "Afrobeat / Traditionnel", "tempo": "105 BPM"},
-    {"title": "Niamey Trap Melodic", "genre": "Hausa Hip Hop / Trap", "tempo": "140 BPM"},
+    {"title": "Afro Zouk Love Vol. 1", "genre": "Afro Zouk", "tempo": "95 BPM", "price": "15 000 FCFA"},
+    {"title": "Kalangu Lema vibe", "genre": "Afrobeat / Traditionnel", "tempo": "105 BPM", "price": "20 000 FCFA"},
+    {"title": "Niamey Trap Melodic", "genre": "Hausa Hip Hop / Trap", "tempo": "140 BPM", "price": "25 000 FCFA"},
 ]
 
 SEED_PROJECTS = [
@@ -237,6 +285,31 @@ SEED_PROJECTS = [
 @api_router.get("/")
 async def root():
     return {"message": "Big S Media Production API"}
+
+
+@api_router.post("/upload")
+async def upload_file(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+    data = await file.read()
+    ext = (file.filename or "file").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin"
+    path = f"{APP_NAME}/uploads/admin/{uuid.uuid4()}.{ext}"
+    content_type = file.content_type or "application/octet-stream"
+    try:
+        result = await run_in_threadpool(put_object, path, data, content_type)
+    except requests.HTTPError as e:
+        code = e.response.status_code if e.response is not None else 500
+        if code == 402:
+            raise HTTPException(status_code=402, detail="Quota de stockage épuisé")
+        raise HTTPException(status_code=502, detail="Échec de l'envoi du fichier")
+    return {"path": result["path"], "content_type": content_type}
+
+
+@api_router.get("/files/{file_path:path}")
+async def serve_file(file_path: str):
+    try:
+        content, content_type = await run_in_threadpool(get_object, file_path)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Fichier introuvable")
+    return Response(content=content, media_type=content_type)
 
 
 @api_router.get("/services")
@@ -410,6 +483,11 @@ async def delete_beat(beat_id: str, admin: dict = Depends(get_current_admin)):
 # ---------------------------------------------------------------------------
 @app.on_event("startup")
 async def seed():
+    try:
+        await run_in_threadpool(init_storage)
+        logger.info("Object storage initialised")
+    except Exception as e:
+        logger.warning(f"Object storage init failed: {e}")
     existing = await db.admins.find_one({"email": ADMIN_EMAIL.lower()})
     if not existing:
         await db.admins.insert_one({

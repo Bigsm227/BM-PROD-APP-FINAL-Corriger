@@ -41,10 +41,17 @@ Crée une application mobile moderne pour Big S Media Production avec une belle 
 - Socials: TikTok @big.sm.officiel227, YouTube @big_sm_officiel, Facebook/Instagram BM Prod
 
 ## Backlog / Remaining
-- P1: Lecteur audio (extraits) pour chaque instrumentale.
-- P1: Prix des beats + panier.
-- P2: Import d'images depuis le téléphone pour les réalisations (Object Storage).
+- P1: Lecteur audio global mini-player (persistant en bas) pour continuer l'écoute en naviguant.
+- P2: Deux prix par beat (licence MP3 / WAV) si souhaité plus tard.
+- P2: Passerelle de paiement automatique (nécessite un compte marchand MyNita/Amanata + API).
 - P2: Historique des commandes côté studio.
+
+## Feature batch (2026-06) — Audio, Prix, Prépaiement, Uploads
+- [x] **Extraits audio** : lecteur play/pause par beat (expo-audio), lecture d'un seul extrait à la fois, remise à zéro en fin de piste.
+- [x] **Tarifs** : prix (FCFA) affiché sur chaque carte beat et sur le bouton « Commander ».
+- [x] **Prépaiement mobile** : « Commander » ouvre l'écran Paiement pré-rempli (beat + prix), choix MyNita/Amanata, numéro de réception +227 96 55 81 93, puis confirmation WhatsApp avec le détail. (Paiement local via mobile money + reçu WhatsApp — pas de passerelle automatique faute de compte marchand/API.)
+- [x] **Import fichiers (admin)** : Emergent Object Storage — backend `/api/upload` (admin) + `/api/files/{path}` (public). Admin importe les images des réalisations (expo-image-picker) et les extraits audio des beats (expo-document-picker) depuis le téléphone.
+- [x] Vérifié : 30/30 tests backend + 100% parcours frontend (iteration_3).
 
 ## Test Credentials
 - Admin: admin@bigsmedia.com / BigS2026!Admin (see /app/memory/test_credentials.md)

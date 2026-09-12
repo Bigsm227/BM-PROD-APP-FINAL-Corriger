@@ -38,7 +38,14 @@
       "expo-image",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choisir des photos pour vos réalisations"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

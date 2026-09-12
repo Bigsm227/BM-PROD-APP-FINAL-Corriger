@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 
-import { getPortfolio, type Project } from "@/src/api";
+import { getPortfolio, mediaUrl, type Project } from "@/src/api";
 import { Loader, ScrimImage } from "@/src/components/ui";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
@@ -59,7 +59,7 @@ export default function Portfolio() {
                 onPress={() => router.push(`/project/${p.id}`)}
                 style={({ pressed }) => [{ width: cardW }, pressed && styles.pressed]}
               >
-                <ScrimImage uri={p.image_url} height={i % 3 === 0 ? 240 : 190} radius={14}>
+                <ScrimImage uri={mediaUrl(p.image_url)} height={i % 3 === 0 ? 240 : 190} radius={14}>
                   <Text style={styles.cat}>{p.category}</Text>
                   <Text style={styles.title}>{p.title}</Text>
                 </ScrimImage>

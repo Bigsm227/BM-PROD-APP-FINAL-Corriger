@@ -18,7 +18,7 @@ import {
   ArrowRight,
 } from "lucide-react-native";
 
-import { getPortfolio, type Project } from "@/src/api";
+import { getPortfolio, mediaUrl, type Project } from "@/src/api";
 import { openLink, SOCIALS, STUDIO } from "@/src/contact";
 import { Loader, ScrimImage, SectionTitle } from "@/src/components/ui";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
@@ -147,7 +147,7 @@ export default function Home() {
                   onPress={() => router.push(`/project/${p.id}`)}
                   style={({ pressed }) => [styles.projectCard, pressed && styles.pressed]}
                 >
-                  <ScrimImage uri={p.image_url} height={220} radius={16}>
+                  <ScrimImage uri={mediaUrl(p.image_url)} height={220} radius={16}>
                     <Text style={styles.projectCat}>{p.category}</Text>
                     <Text style={styles.projectTitle}>{p.title}</Text>
                   </ScrimImage>

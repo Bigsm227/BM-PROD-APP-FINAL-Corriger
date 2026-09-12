@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { X, Wallet, Phone, CheckCircle2 } from "lucide-react-native";
+import { X, Wallet, Phone, CheckCircle2, Disc3 } from "lucide-react-native";
 
 import { openLink, openWhatsApp, STUDIO } from "@/src/contact";
 import { PrimaryButton } from "@/src/components/ui";
@@ -16,11 +16,17 @@ export default function Paiement() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { title, price } = useLocalSearchParams<{ title?: string; price?: string }>();
   const [method, setMethod] = useState("MyNita");
+
+  const isOrder = !!title;
 
   const confirm = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    openWhatsApp(`Bonjour Big S, j'ai effectué un paiement via ${method} pour valider ma commande/session.`);
+    const message = isOrder
+      ? `Bonjour Big S, je commande l'instrumentale "${title}"${price ? ` (${price})` : ""}.\nPaiement via ${method} au ${STUDIO.phoneDisplay}. Je confirme l'envoi du reçu.`
+      : `Bonjour Big S, j'ai effectué un paiement via ${method} pour valider ma commande/session.`;
+    openWhatsApp(message);
   };
 
   return (
@@ -29,7 +35,7 @@ export default function Paiement() {
         <View style={styles.iconWrap}>
           <Wallet color={colors.brandPrimary} size={22} />
         </View>
-        <Text style={styles.title}>Paiement & Transfert</Text>
+        <Text style={styles.title}>{isOrder ? "Commande & Paiement" : "Paiement & Transfert"}</Text>
         <Pressable testID="close-payment-button" onPress={() => router.back()} hitSlop={12} style={styles.closeBtn}>
           <X color={colors.onSurface} size={22} />
         </Pressable>
@@ -39,7 +45,22 @@ export default function Paiement() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
       >
-        <Text style={styles.lead}>Réglez votre acompte ou vos prestations en toute simplicité.</Text>
+        {isOrder ? (
+          <View style={styles.orderCard} testID="payment-order-summary">
+            <View style={styles.orderCover}>
+              <Disc3 color={colors.onBrandPrimary} size={22} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.orderLabel}>Votre commande</Text>
+              <Text style={styles.orderTitle} numberOfLines={1}>
+                {title}
+              </Text>
+            </View>
+            {price ? <Text style={styles.orderPrice}>{price}</Text> : null}
+          </View>
+        ) : (
+          <Text style={styles.lead}>Réglez votre acompte ou vos prestations en toute simplicité.</Text>
+        )}
 
         {/* Reception number */}
         <View style={styles.numberCard}>
@@ -56,11 +77,11 @@ export default function Paiement() {
         </View>
 
         <Text style={styles.info}>
-          {"Envoyez votre paiement par MyNita ou Amanata au numéro ci-dessus, puis confirmez l'envoi du reçu sur WhatsApp."}
+          {"Envoyez votre paiement mobile au numéro ci-dessus via MyNita ou Amanata, puis confirmez l'envoi du reçu sur WhatsApp."}
         </Text>
 
         {/* Method selection */}
-        <Text style={styles.fieldLabel}>Méthode utilisée</Text>
+        <Text style={styles.fieldLabel}>Méthode de paiement mobile</Text>
         <View style={styles.methods}>
           {METHODS.map((m) => {
             const active = method === m;
@@ -80,7 +101,7 @@ export default function Paiement() {
 
         <PrimaryButton
           testID="confirm-payment-button"
-          label="Confirmer le paiement sur WhatsApp"
+          label={isOrder ? "Payer & confirmer sur WhatsApp" : "Confirmer le paiement sur WhatsApp"}
           onPress={confirm}
           style={{ marginTop: 8 }}
         />
@@ -109,7 +130,7 @@ const useStyles = makeStyles((colors) => ({
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { color: colors.onSurface, fontFamily: fonts.displaySemiBold, fontSize: 24, flex: 1 },
+  title: { color: colors.onSurface, fontFamily: fonts.displaySemiBold, fontSize: 22, flex: 1 },
   closeBtn: {
     width: 40,
     height: 40,
@@ -122,6 +143,27 @@ const useStyles = makeStyles((colors) => ({
   },
   scroll: { padding: 20, gap: 18 },
   lead: { color: colors.onSurfaceSecondary, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  orderCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+  },
+  orderCover: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.brandPrimary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
+  orderTitle: { color: colors.onSurface, fontFamily: fonts.semiBold, fontSize: 16, marginTop: 2 },
+  orderPrice: { color: colors.brandPrimary, fontFamily: fonts.displaySemiBold, fontSize: 18 },
   numberCard: {
     backgroundColor: colors.surfaceSecondary,
     borderRadius: 18,

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -11,7 +12,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
