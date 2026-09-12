@@ -49,7 +49,7 @@ export default function RootLayout() {
                 >
                   <Stack.Screen name="(tabs)" />
                   <Stack.Screen name="project/[id]" options={{ presentation: "modal" }} />
-                  <Stack.Screen name="rendezvous" options={{ presentation: "modal" }} />
+                  <Stack.Screen name="paiement" options={{ presentation: "modal" }} />
                   <Stack.Screen name="admin/login" options={{ presentation: "modal" }} />
                   <Stack.Screen name="admin/index" />
                 </Stack>

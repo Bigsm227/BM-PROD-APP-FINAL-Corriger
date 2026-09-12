@@ -1,14 +1,26 @@
 import { useMemo } from "react";
-import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
+import { Dimensions, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound, Camera, Film, ArrowRight, Sparkles } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
+import {
+  KeyRound,
+  Sparkles,
+  CalendarClock,
+  Music4,
+  Wallet,
+  Phone,
+  Mail,
+  ChevronRight,
+  ArrowRight,
+} from "lucide-react-native";
 
-import { getServices, getPortfolio, type Service, type Project } from "@/src/api";
-import { GhostButton, Loader, PrimaryButton, ScrimImage, SectionTitle } from "@/src/components/ui";
+import { getPortfolio, type Project } from "@/src/api";
+import { openLink, SOCIALS, STUDIO } from "@/src/contact";
+import { Loader, ScrimImage, SectionTitle } from "@/src/components/ui";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 
 const HERO =
@@ -20,88 +32,92 @@ export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = Dimensions.get("window");
-  const heroHeight = useMemo(() => Math.min(width * 1.35, 620), [width]);
+  const heroHeight = useMemo(() => Math.min(width * 1.3, 600), [width]);
 
-  const services = useQuery({ queryKey: ["services"], queryFn: getServices });
   const portfolio = useQuery({ queryKey: ["portfolio"], queryFn: getPortfolio });
+
+  const tap = (fn: () => void) => () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    fn();
+  };
+
+  const actions = [
+    {
+      key: "reserver",
+      icon: CalendarClock,
+      title: "Réserver une session",
+      sub: "Studio audio & vidéo",
+      onPress: () => router.push("/(tabs)/studio"),
+    },
+    {
+      key: "beats",
+      icon: Music4,
+      title: "Catalogue d'instrumentales",
+      sub: "Écoutez & commandez vos beats",
+      onPress: () => router.push("/(tabs)/beats"),
+    },
+    {
+      key: "paiement",
+      icon: Wallet,
+      title: "Paiement MyNita / Amanata",
+      sub: "Réglez acompte & prestations",
+      onPress: () => router.push("/paiement"),
+    },
+  ];
+
+  const contacts = [
+    { key: "phone", icon: Phone, label: "Téléphone", value: STUDIO.phoneDisplay, onPress: () => openLink(`tel:${STUDIO.phoneTel}`) },
+    { key: "email", icon: Mail, label: "E-mail", value: STUDIO.email, onPress: () => openLink(`mailto:${STUDIO.email}`) },
+    ...SOCIALS.map((s) => ({ key: s.key, icon: Sparkles, label: s.label, value: s.value, onPress: () => openLink(s.url) })),
+  ];
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Hero */}
         <View style={{ height: heroHeight }}>
           <Image source={{ uri: HERO }} style={styles.heroImg} contentFit="cover" transition={400} />
           <LinearGradient
-            colors={["rgba(5,5,5,0.45)", "rgba(5,5,5,0.15)", "rgba(5,5,5,0.98)"]}
+            colors={["rgba(5,5,5,0.5)", "rgba(5,5,5,0.15)", "rgba(5,5,5,0.98)"]}
             locations={[0, 0.4, 1]}
             style={styles.heroScrim}
           />
-
-          {/* Top bar */}
           <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
             <View style={styles.brandRow}>
               <Sparkles color={colors.brandPrimary} size={18} />
               <Text style={styles.brandMark}>BIG S MEDIA</Text>
             </View>
-            <Pressable
-              testID="admin-access-button"
-              onPress={() => router.push("/admin/login")}
-              hitSlop={12}
-              style={styles.keyBtn}
-            >
+            <Pressable testID="admin-access-button" onPress={() => router.push("/admin/login")} hitSlop={12} style={styles.keyBtn}>
               <KeyRound color={colors.onSurfaceTertiary} size={18} />
             </Pressable>
           </View>
 
-          {/* Hero content */}
           <View style={styles.heroContent}>
-            <Text style={styles.eyebrow}>MAISON DE PRODUCTION</Text>
-            <Text style={styles.heroTitle}>{"L'art de raconter\nvos histoires"}</Text>
-            <Text style={styles.heroSub}>
-              Production audiovisuelle cinématographique & numérisation de vos souvenirs.
-            </Text>
-            <View style={styles.heroBtns}>
-              <PrimaryButton
-                testID="hero-quote-button"
-                label="Demander un devis"
-                onPress={() => router.push("/(tabs)/devis")}
-                style={{ flex: 1 }}
-              />
-              <GhostButton
-                testID="hero-appointment-button"
-                label="Rendez-vous"
-                onPress={() => router.push("/rendezvous")}
-                style={{ flex: 1 }}
-              />
-            </View>
+            <Text style={styles.eyebrow}>NIAMEY · NIGER</Text>
+            <Text style={styles.heroTitle}>{"BIG S MEDIA\nPRODUCTION"}</Text>
+            <Text style={styles.heroSub}>{STUDIO.tagline}</Text>
           </View>
         </View>
 
-        {/* Services */}
+        {/* Actions */}
         <View style={styles.section}>
-          <SectionTitle>Nos savoir-faire</SectionTitle>
-          <View style={styles.serviceGrid}>
-            {(services.data ?? []).map((s: Service) => (
+          <SectionTitle>Que souhaitez-vous ?</SectionTitle>
+          <View style={{ gap: 12 }}>
+            {actions.map((a) => (
               <Pressable
-                key={s.id}
-                testID={`home-service-${s.id}`}
-                onPress={() => router.push("/(tabs)/services")}
-                style={({ pressed }) => [styles.serviceCard, pressed && styles.pressed]}
+                key={a.key}
+                testID={`home-action-${a.key}`}
+                onPress={tap(a.onPress)}
+                style={({ pressed }) => [styles.actionCard, pressed && styles.pressed]}
               >
-                <ScrimImage uri={s.image_url} height={170} radius={16}>
-                  <View style={styles.serviceIconRow}>
-                    {s.id === "production" ? (
-                      <Film color={colors.brandPrimary} size={16} />
-                    ) : (
-                      <Camera color={colors.brandPrimary} size={16} />
-                    )}
-                    <Text style={styles.serviceTag}>{s.tagline}</Text>
-                  </View>
-                  <Text style={styles.serviceTitle}>{s.title}</Text>
-                </ScrimImage>
+                <View style={styles.actionIcon}>
+                  <a.icon color={colors.brandPrimary} size={22} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionTitle}>{a.title}</Text>
+                  <Text style={styles.actionSub}>{a.sub}</Text>
+                </View>
+                <ChevronRight color={colors.muted} size={20} />
               </Pressable>
             ))}
           </View>
@@ -118,17 +134,12 @@ export default function Home() {
               </View>
             </Pressable>
           </View>
-
           {portfolio.isLoading ? (
-            <View style={{ height: 220 }}>
+            <View style={{ height: 200 }}>
               <Loader />
             </View>
           ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 14, paddingRight: 20 }}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingRight: 20 }}>
               {(portfolio.data ?? []).map((p: Project) => (
                 <Pressable
                   key={p.id}
@@ -136,7 +147,7 @@ export default function Home() {
                   onPress={() => router.push(`/project/${p.id}`)}
                   style={({ pressed }) => [styles.projectCard, pressed && styles.pressed]}
                 >
-                  <ScrimImage uri={p.image_url} height={230} radius={16}>
+                  <ScrimImage uri={p.image_url} height={220} radius={16}>
                     <Text style={styles.projectCat}>{p.category}</Text>
                     <Text style={styles.projectTitle}>{p.title}</Text>
                   </ScrimImage>
@@ -146,18 +157,27 @@ export default function Home() {
           )}
         </View>
 
-        {/* Closing CTA */}
+        {/* Contacts */}
         <View style={styles.section}>
-          <View style={styles.ctaCard}>
-            <Text style={styles.ctaTitle}>Un projet en tête ?</Text>
-            <Text style={styles.ctaSub}>
-              Parlons-en. Recevez une proposition sur mesure sous 48 h.
-            </Text>
-            <PrimaryButton
-              testID="cta-quote-button"
-              label="Démarrer mon projet"
-              onPress={() => router.push("/(tabs)/devis")}
-            />
+          <SectionTitle>Nous contacter</SectionTitle>
+          <View style={styles.contactList}>
+            {contacts.map((c) => (
+              <Pressable
+                key={c.key}
+                testID={`home-contact-${c.key}`}
+                onPress={tap(c.onPress)}
+                style={({ pressed }) => [styles.contactRow, pressed && styles.pressed]}
+              >
+                <View style={styles.contactIcon}>
+                  <c.icon color={colors.brandPrimary} size={18} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.contactLabel}>{c.label}</Text>
+                  <Text style={styles.contactValue}>{c.value}</Text>
+                </View>
+                <ChevronRight color={colors.muted} size={18} />
+              </Pressable>
+            ))}
           </View>
         </View>
       </ScrollView>
@@ -180,12 +200,7 @@ const useStyles = makeStyles((colors) => ({
     justifyContent: "space-between",
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandMark: {
-    color: colors.onSurface,
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-    letterSpacing: 3,
-  },
+  brandMark: { color: colors.onSurface, fontFamily: fonts.semiBold, fontSize: 14, letterSpacing: 3 },
   keyBtn: {
     width: 40,
     height: 40,
@@ -196,49 +211,57 @@ const useStyles = makeStyles((colors) => ({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  heroContent: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 24, gap: 8 },
-  eyebrow: {
-    color: colors.brandPrimary,
-    fontFamily: fonts.semiBold,
-    fontSize: 12,
-    letterSpacing: 4,
-  },
-  heroTitle: {
-    color: colors.onSurface,
-    fontFamily: fonts.displayBold,
-    fontSize: 52,
-    lineHeight: 54,
-  },
-  heroSub: {
-    color: colors.onSurfaceTertiary,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  heroBtns: { flexDirection: "row", gap: 12 },
+  heroContent: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 24, gap: 6 },
+  eyebrow: { color: colors.brandPrimary, fontFamily: fonts.semiBold, fontSize: 12, letterSpacing: 4 },
+  heroTitle: { color: colors.onSurface, fontFamily: fonts.displayBold, fontSize: 46, lineHeight: 48 },
+  heroSub: { color: colors.onSurfaceTertiary, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginTop: 2 },
   section: { paddingHorizontal: 20, paddingTop: 32, gap: 16 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   seeAll: { flexDirection: "row", alignItems: "center", gap: 4 },
   seeAllText: { color: colors.brandPrimary, fontFamily: fonts.medium, fontSize: 13 },
-  serviceGrid: { gap: 14 },
-  serviceCard: { borderRadius: 16, overflow: "hidden" },
-  serviceIconRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
-  serviceTag: { color: colors.onSurfaceTertiary, fontFamily: fonts.medium, fontSize: 12 },
-  serviceTitle: { color: colors.onSurface, fontFamily: fonts.displaySemiBold, fontSize: 24 },
+  actionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.brandTertiary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionTitle: { color: colors.onSurface, fontFamily: fonts.semiBold, fontSize: 16 },
+  actionSub: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
   projectCard: { width: 200, borderRadius: 16, overflow: "hidden" },
   projectCat: { color: colors.brandPrimary, fontFamily: fonts.medium, fontSize: 11, letterSpacing: 1 },
   projectTitle: { color: colors.onSurface, fontFamily: fonts.displaySemiBold, fontSize: 20 },
-  pressed: { opacity: 0.85 },
-  ctaCard: {
+  contactList: { gap: 10 },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
     backgroundColor: colors.surfaceSecondary,
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 24,
-    gap: 10,
+    padding: 14,
   },
-  ctaTitle: { color: colors.onSurface, fontFamily: fonts.displaySemiBold, fontSize: 28 },
-  ctaSub: { color: colors.onSurfaceTertiary, fontFamily: fonts.regular, fontSize: 14, marginBottom: 8, lineHeight: 20 },
+  contactIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.brandTertiary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  contactLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
+  contactValue: { color: colors.onSurface, fontFamily: fonts.regular, fontSize: 15, marginTop: 2 },
+  pressed: { opacity: 0.85 },
 }));

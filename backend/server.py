@@ -106,6 +106,18 @@ class StatusUpdate(BaseModel):
     status: str
 
 
+class BeatCreate(BaseModel):
+    title: str
+    genre: str
+    tempo: str
+    published: bool = True
+
+
+class Beat(BeatCreate):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: str = Field(default_factory=now_iso)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -181,6 +193,12 @@ SERVICES = [
     },
 ]
 
+SEED_BEATS = [
+    {"title": "Afro Zouk Love Vol. 1", "genre": "Afro Zouk", "tempo": "95 BPM"},
+    {"title": "Kalangu Lema vibe", "genre": "Afrobeat / Traditionnel", "tempo": "105 BPM"},
+    {"title": "Niamey Trap Melodic", "genre": "Hausa Hip Hop / Trap", "tempo": "140 BPM"},
+]
+
 SEED_PROJECTS = [
     {
         "title": "Lumière Rouge",
@@ -240,6 +258,14 @@ async def get_project(project_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Projet introuvable")
     return Project(**{k: v for k, v in doc.items() if k != "_id"})
+
+
+@api_router.get("/beats", response_model=List[Beat])
+async def get_beats():
+    docs = await db.beats.find(
+        {"published": True, "deleted_at": {"$exists": False}}
+    ).sort("created_at", 1).to_list(200)
+    return [Beat(**{k: v for k, v in d.items() if k != "_id"}) for d in docs]
 
 
 @api_router.post("/quotes", response_model=Quote)
@@ -358,6 +384,27 @@ async def delete_project(project_id: str, admin: dict = Depends(get_current_admi
     return {"success": True}
 
 
+@api_router.get("/admin/beats", response_model=List[Beat])
+async def admin_beats(admin: dict = Depends(get_current_admin)):
+    docs = await db.beats.find({"deleted_at": {"$exists": False}}).sort("created_at", 1).to_list(500)
+    return [Beat(**{k: v for k, v in d.items() if k != "_id"}) for d in docs]
+
+
+@api_router.post("/admin/beats", response_model=Beat)
+async def create_beat(payload: BeatCreate, admin: dict = Depends(get_current_admin)):
+    beat = Beat(**payload.dict())
+    await db.beats.insert_one(beat.dict())
+    return beat
+
+
+@api_router.delete("/admin/beats/{beat_id}")
+async def delete_beat(beat_id: str, admin: dict = Depends(get_current_admin)):
+    res = await db.beats.update_one({"id": beat_id}, {"$set": {"deleted_at": now_iso()}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Instrumentale introuvable")
+    return {"success": True}
+
+
 # ---------------------------------------------------------------------------
 # Startup: seed admin + portfolio
 # ---------------------------------------------------------------------------
@@ -378,6 +425,11 @@ async def seed():
         for p in SEED_PROJECTS:
             await db.projects.insert_one(Project(published=True, **p).dict())
         logger.info("Seeded portfolio projects")
+    bcount = await db.beats.count_documents({})
+    if bcount == 0:
+        for b in SEED_BEATS:
+            await db.beats.insert_one(Beat(published=True, **b).dict())
+        logger.info("Seeded beats")
 
 
 app.include_router(api_router)

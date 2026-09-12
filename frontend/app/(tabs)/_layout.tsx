@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
-import { House, Clapperboard, Images, FileText } from "lucide-react-native";
+import { House, Music4, Images, Mic } from "lucide-react-native";
 
 import { fonts, useTheme } from "@/src/theme";
 
@@ -31,10 +31,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="services"
+        name="beats"
         options={{
-          title: "Services",
-          tabBarIcon: ({ color, size }) => <Clapperboard color={color} size={size} />,
+          title: "Beats",
+          tabBarIcon: ({ color, size }) => <Music4 color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -45,10 +45,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="devis"
+        name="studio"
         options={{
-          title: "Devis",
-          tabBarIcon: ({ color, size }) => <FileText color={color} size={size} />,
+          title: "Studio",
+          tabBarIcon: ({ color, size }) => <Mic color={color} size={size} />,
         }}
       />
     </Tabs>

@@ -10,6 +10,15 @@ export type Service = {
   features: string[];
 };
 
+export type Beat = {
+  id: string;
+  title: string;
+  genre: string;
+  tempo: string;
+  published: boolean;
+  created_at: string;
+};
+
 export type Project = {
   id: string;
   title: string;
@@ -67,6 +76,10 @@ export async function getServices(): Promise<Service[]> {
 
 export async function getPortfolio(): Promise<Project[]> {
   return handle(await fetch(`${API}/portfolio`));
+}
+
+export async function getBeats(): Promise<Beat[]> {
+  return handle(await fetch(`${API}/beats`));
 }
 
 export async function getProject(id: string): Promise<Project> {
@@ -179,4 +192,25 @@ export async function createProject(
 
 export async function deleteProject(token: string, id: string) {
   return handle(await fetch(`${API}/admin/portfolio/${id}`, { method: "DELETE", headers: authHeaders(token) }));
+}
+
+export async function getAdminBeats(token: string): Promise<Beat[]> {
+  return handle(await fetch(`${API}/admin/beats`, { headers: authHeaders(token) }));
+}
+
+export async function createBeat(
+  token: string,
+  payload: { title: string; genre: string; tempo: string; published?: boolean },
+): Promise<Beat> {
+  return handle(
+    await fetch(`${API}/admin/beats`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }),
+  );
+}
+
+export async function deleteBeat(token: string, id: string) {
+  return handle(await fetch(`${API}/admin/beats/${id}`, { method: "DELETE", headers: authHeaders(token) }));
 }
