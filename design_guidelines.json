@@ -1,0 +1,169 @@
+{
+  "app_name": "Big S Media Production",
+  "personality": "6 Glass / Luxe DARK",
+  "personality_one_liner": "Une expérience sombre, cinématographique et luxueuse, mettant en valeur l'art de la production avec des jeux d'ombre, de verre et des accents dorés.",
+  "color": {
+    "surface": "#050505",
+    "onSurface": "#FFFFFF",
+    "surfaceSecondary": "#111111",
+    "onSurfaceSecondary": "#F5F5F5",
+    "surfaceTertiary": "#1A1A1A",
+    "onSurfaceTertiary": "#CCCCCC",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#050505",
+    "brand": "#C9A84C",
+    "onBrand": "#050505",
+    "brandPrimary": "#C9A84C",
+    "onBrandPrimary": "#050505",
+    "brandSecondary": "#8C7535",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#26200E",
+    "onBrandTertiary": "#C9A84C",
+    "success": "#2E4D3A",
+    "onSuccess": "#9AE6B4",
+    "warning": "#5C4018",
+    "onWarning": "#FBD38D",
+    "error": "#5C1B1B",
+    "onError": "#FEB2B2",
+    "info": "#1A365D",
+    "onInfo": "#90CDF4",
+    "border": "#222222",
+    "borderStrong": "#333333",
+    "divider": "#1A1A1A",
+    "muted": "#888888"
+  },
+  "typography": {
+    "displayFontFamily": "CormorantGaramond",
+    "textFontFamily": "Geist",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical breathing room for cinematic feel. Avoid dense clustering. Use md/lg for internal card padding and xl/2xl for section spacing.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Lucide",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use heavily on sticky headers and bottom tab bar.",
+      "Use for featured service cards overlapping the hero background.",
+      "Use as a backdrop for modal sheets and the quote form fields.",
+      "Always include a translucent tint base (>= 75% opacity of surface) under the blur to ensure contrast."
+    ],
+    "dont's": [
+      "Don't blur dense body text.",
+      "Don't stack more than two glass surfaces.",
+      "Don't use pure white for glass tints; use surfaceInverse or surface to match the dark theme."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Accueil (Home)",
+      "purpose": "Accueillir l'utilisateur avec une vidéo/image plein écran et présenter l'univers de Big S Media Production.",
+      "states": {
+        "loading": "Logo doré pulsant sur fond noir.",
+        "empty": "N/A",
+        "error": "Message élégant d'erreur de chargement avec bouton 'Réessayer' bordé d'or."
+      },
+      "layout": "Full-bleed background image behind the entire screen. A vertical gradient scrim (transparent to 80% surface at bottom) over the image. A massive Cormorant Garamond title at the bottom half, followed by a primary glassmorphic 'Demander un devis' button."
+    },
+    {
+      "name": "Services",
+      "purpose": "Détailler les offres (Production Audiovisuelle et Numérisation de Cassettes).",
+      "states": {
+        "loading": "Skeleton cards avec reflets sombres.",
+        "empty": "Aucun service trouvé.",
+        "error": "Impossible de charger le catalogue."
+      },
+      "layout": "Sticky glass header with segmented control (Production / Numérisation). A vertical list of large cards with background imagery and gradient scrims. Text anchored at the bottom of each card. CTA on each card to book/request."
+    },
+    {
+      "name": "Portfolio",
+      "purpose": "Galerie visuelle des projets réalisés.",
+      "states": {
+        "loading": "Grille skeleton.",
+        "empty": "Aucun projet publié pour le moment.",
+        "error": "Échec du chargement de la galerie."
+      },
+      "layout": "Masonry grid or full-width immersive list of high-quality project stills. Minimal text, let the imagery breathe. Tapping an image opens a full-screen glass modal with project details."
+    },
+    {
+      "name": "Devis & Contact",
+      "purpose": "Formulaire de contact et de réservation multi-étapes.",
+      "states": {
+        "loading": "Spinner doré.",
+        "empty": "N/A",
+        "error": "Erreur lors de l'envoi, bouton 'Réessayer'."
+      },
+      "layout": "Step-by-step form with glassmorphic input fields resting on surfaceSecondary. Large thumb-friendly targets. Bottom sticky primary CTA 'Continuer' with safe-area padding."
+    },
+    {
+      "name": "Admin Dashboard",
+      "purpose": "Espace gestion pour suivre les demandes et projets.",
+      "states": {
+        "loading": "Lignes de tableau skeleton.",
+        "empty": "Aucune demande en attente, illustration minimaliste d'un bureau.",
+        "error": "Connexion impossible."
+      },
+      "layout": "Utility-first layout tailored for admin. Segmented controls for Requests / Appointments / Projects. List items with clear status badges (using success/warning tokens). Drawer or secondary sheet for item details."
+    }
+  ],
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1612544409025-e1f6a56c1152?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBmaWxtJTIwcHJvZHVjdGlvbiUyMHNldCUyMGRpcmVjdG9yfGVufDB8fHx8MTc4OTE3ODc4Mnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Plateau de tournage cinématographique sombre"
+    },
+    "service_production": {
+      "url": "https://images.unsplash.com/photo-1632187981988-40f3cbaeef5e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwzfHxjaW5lbWF0aWMlMjBmaWxtJTIwcHJvZHVjdGlvbiUyMHNldCUyMGRpcmVjdG9yfGVufDB8fHx8MTc4OTE3ODc4Mnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Équipe de tournage"
+    },
+    "service_cassette": {
+      "url": "https://images.unsplash.com/photo-1705951427178-4ae10a3d576e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w8NTYxODh8MHwxfHNlYXJjaHwxfHxWSFMlMjBjYXNzZXR0ZSUyMHRhcGVzJTIwcmV0cm8lMjBzdGFja3xlbnwwfHx8fDE3ODkxNzg3ODJ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Piles de cassettes VHS vintage"
+    },
+    "portfolio_1": {
+      "url": "https://images.unsplash.com/photo-1761701390408-f05014b3741a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHw0fHxjaW5lbWF0aWMlMjBjYW1lcmElMjBkYXJrJTIwc3R1ZGlvJTIwbGlnaHRpbmd8ZW58MHx8fHwxNzg5MTc4NzgyfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Caméra vintage sous lumière rouge"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Follow the '6 Glass / Luxe DARK' personality rigorously: cinematic deep blacks (#050505), high contrast white text, and metallic/gold accents (#C9A84C).",
+    "Utilize Cormorant Garamond for all headings to establish a luxurious, editorial feel, and Geist for UI body text.",
+    "Implement a mandatory vertical gradient scrim (transparent to 80% surface inverse/black) on any image with text overlay to guarantee WCAG contrast.",
+    "The UI is entirely in French (Accueil, Services, Devis, Portfolio).",
+    "Admin Dashboard should be accessible via a hidden gesture or a subtle link in settings, offering a list view of form submissions.",
+    "Ensure glassmorphism is used on floating/sticky elements (headers, tab bars) with a proper underlying tint (>=75% opacity) so the text remains legible over scrolling backgrounds."
+  ]
+}
